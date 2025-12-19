@@ -38,6 +38,7 @@
         // =========================================================
         const APP_ID = 'LUMZuF5Cr3LjaCLSeyoYnvnS-MdYXbMMI'; 
         const APP_KEY = 'rYU63S7qKIqPcjeHdXwfnSca';
+        const SERVER_URL = 'https://lumzuf5c.api.lncldglobal.com'; 
         // 为了演示方便，如果填的是空的，会报错
         if(APP_ID.includes('这里填') || APP_KEY.includes('这里填')){
             alert("请先在代码中填入你的 LeanCloud AppID 和 AppKey！");
@@ -46,6 +47,7 @@
         AV.init({
             appId: APP_ID,
             appKey: APP_KEY,
+            serverURL: SERVER_URL
             });
 
         // 定义电影列表
