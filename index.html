@@ -36,8 +36,8 @@
         // 1. 初始化云端数据库
         // 请将下面的字符串替换为你自己在 LeanCloud 申请的 AppID 和 AppKey
         // =========================================================
-        const APP_ID = 'BtVESxWMsEls8dBUxBEwLRAb-gzGzoHsz'; 
-        const APP_KEY = 'i9tXKxUCBLimLM3SA5qkm7Or';
+        const APP_ID = 'LUMZuF5Cr3LjaCLSeyoYnvnS-MdYXbMMI'; 
+        const APP_KEY = 'rYU63S7qKIqPcjeHdXwfnSca';
         // 为了演示方便，如果填的是空的，会报错
         if(APP_ID.includes('这里填') || APP_KEY.includes('这里填')){
             alert("请先在代码中填入你的 LeanCloud AppID 和 AppKey！");
@@ -46,7 +46,7 @@
         AV.init({
             appId: APP_ID,
             appKey: APP_KEY,
-            serverURL: 'https://btvesxwm.lc-cn-n1-shared.com'});
+            });
 
         // 定义电影列表
         const movieNames = ['星际穿越', '盗梦空间', '泰坦尼克号', '复仇者联盟', '千与千寻'];
