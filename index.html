@@ -4,164 +4,239 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>天国电影投票</title>
-    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-min.js"></script>
-
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
-        h1 { color: #333; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        #chart { width: 100%; height: 300px; margin-top: 20px; }
-        .btn-group { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 5px; background-color: #007bff; color: white; transition: 0.2s; }
-        button:hover { background-color: #0056b3; transform: scale(1.05); }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
-        .loading { color: #888; font-size: 14px; margin-bottom: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1, h2 { text-align: center; color: #2c3e50; }
+        
+        /* 投票表单区域 */
+        .vote-section { background: #eef2f7; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .veto-input { border-color: #ff6b6b; background-color: #fff0f0; }
+        
+        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: 0.2s; }
+        button:hover { background-color: #0056b3; }
+        
+        /* 结果展示表格 */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: center; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f9fa; color: #666; font-size: 14px; }
+        
+        /* 特殊状态样式 */
+        .rank-1 { color: #d35400; font-weight: bold; } /* 第一名颜色 */
+        .veto-dead { text-decoration: line-through; color: #999; background-color: #ffe6e6; } /* 被淘汰 */
+        .veto-badge { background: #ff4757; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+        .overlap-badge { background: #2ed573; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+        .rules { font-size: 12px; color: #666; background: #fff8e1; padding: 10px; border-radius: 6px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>🎬 天国电影VOTE</h1>
-        <p class="loading" id="status">Loading...</p>
-        
-        <div class="btn-group" id="btnContainer">
-            </div>
-
-        <div id="chart"></div>
+<div class="container">
+    <h1>🎬 天国电影VOTE</h1>
+    
+    <div class="rules">
+        <strong>计分规则：</strong>第1志愿=3分，第2志愿=2分，第3志愿=1分。<br>
+        <strong>淘汰规则：</strong>任意电影收到 ≥2 个 Veto 直接淘汰。<br>
+        <strong>获胜判定：</strong>优先看“多人提名”的高分电影；无重合则取 Top3 进二轮。
     </div>
 
-    <script>
-        // =========================================================
-        // 1. 初始化云端数据库
-        // 请将下面的字符串替换为你自己在 LeanCloud 申请的 AppID 和 AppKey
-        // =========================================================
-        const APP_ID = 'LUMZuF5Cr3LjaCLSeyoYnvnS-MdYXbMMI'; 
-        const APP_KEY = 'rYU63S7qKIqPcjeHdXwfnSca';
-        const SERVER_URL = 'https://lumzuf5c.api.lncldglobal.com'; 
-        // 为了演示方便，如果填的是空的，会报错
-        if(APP_ID.includes('这里填') || APP_KEY.includes('这里填')){
-            alert("请先在代码中填入你的 LeanCloud AppID 和 AppKey！");
+    <div class="vote-section">
+        <h3>📝 填写选票</h3>
+        <div class="input-group">
+            <label>你的名字</label>
+            <input type="text" id="voterName" placeholder="例如：张三">
+        </div>
+        <div class="input-group">
+            <label>❤️ 第一志愿 (3分)</label>
+            <input type="text" id="movie1" placeholder="最想看的">
+        </div>
+        <div class="input-group">
+            <label>💙 第二志愿 (2分)</label>
+            <input type="text" id="movie2" placeholder="想看的">
+        </div>
+        <div class="input-group">
+            <label>💛 第三志愿 (1分)</label>
+            <input type="text" id="movie3" placeholder="也可以的">
+        </div>
+        <div class="input-group">
+            <label style="color:#d63031">🚫 反向保护 Veto (可选)</label>
+            <input type="text" id="movieVeto" class="veto-input" placeholder="如果有≥2人填此片，则直接淘汰">
+        </div>
+        <button onclick="submitBallot()">提交选票</button>
+    </div>
+
+    <hr>
+
+    <h2>📊 实时战况</h2>
+    <p id="status">正在加载...</p>
+    <table id="resultTable">
+        <thead>
+            <tr>
+                <th>排名</th>
+                <th>电影名</th>
+                <th>总分</th>
+                <th>提名人数</th>
+                <th>Veto数</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            </tbody>
+    </table>
+    
+    <div style="margin-top:20px; text-align:center;">
+        <small style="color:#999">请确保大家输入的电影名完全一致（推荐复制粘贴）</small>
+    </div>
+</div>
+
+<script>
+    // ================= 配置区域 =================
+    const APP_ID = 'LUMZuF5Cr3LjaCLSeyoYnvnS-MdYXbMMI'; 
+    const APP_KEY = 'rYU63S7qKIqPcjeHdXwfnSca';
+    const SERVER_URL = 'https://lumzuf5c.api.lncldglobal.com';
+
+    AV.init({ appId: APP_ID, appKey: APP_KEY, serverURL: SERVER_URL });
+
+    // ================= 逻辑代码 =================
+
+    // 提交选票
+    async function submitBallot() {
+        const name = document.getElementById('voterName').value.trim();
+        const m1 = document.getElementById('movie1').value.trim();
+        const m2 = document.getElementById('movie2').value.trim();
+        const m3 = document.getElementById('movie3').value.trim();
+        const veto = document.getElementById('movieVeto').value.trim();
+
+        if(!name || !m1 || !m2 || !m3) {
+            alert("请填写完整名字和前三部电影！");
+            return;
         }
 
-        AV.init({
-            appId: APP_ID,
-            appKey: APP_KEY,
-            serverURL: SERVER_URL
-            });
+        const Ballot = AV.Object.extend('Ballot');
+        const ballot = new Ballot();
+        ballot.set('voter', name);
+        ballot.set('rank1', m1);
+        ballot.set('rank2', m2);
+        ballot.set('rank3', m3);
+        ballot.set('veto', veto);
 
-        // 定义电影列表
-        const movieNames = ['星际穿越', '盗梦空间', '泰坦尼克号', '复仇者联盟', '千与千寻'];
-        let chartInstance = echarts.init(document.getElementById('chart'));
+        try {
+            await ballot.save();
+            alert("提交成功！");
+            // 清空输入框防止重复提交
+            document.querySelectorAll('input').forEach(i => i.value = '');
+            loadResults(); // 刷新结果
+        } catch (error) {
+            alert("提交失败，请重试：" + error.message);
+        }
+    }
 
-        // =========================================================
-        // 2. 核心功能函数
-        // =========================================================
+    // 拉取数据并计算
+    async function loadResults() {
+        document.getElementById('status').innerText = "计算中...";
+        const query = new AV.Query('Ballot');
+        // 获取所有人的投票
+        const ballots = await query.find();
+        
+        // 1. 原始数据统计字典
+        let stats = {}; 
 
-        // 获取或初始化数据
-        async function loadData() {
-            document.getElementById('status').innerText = "正在同步数据...";
-            const query = new AV.Query('MovieScores');
-            
-            try {
-                const results = await query.find();
-                
-                // 如果云端是空的（第一次运行），我们先创建数据
-                if (results.length === 0) {
-                    await initCloudData();
-                    return loadData(); // 重新加载
-                }
-
-                // 整理云端拿到的数据
-                let dataMap = {};
-                results.forEach(item => {
-                    dataMap[item.get('name')] = {
-                        votes: item.get('votes'),
-                        id: item.id // 记住这个ID，投票时要用
-                    };
-                });
-
-                // 更新图表
-                updateChart(dataMap);
-                document.getElementById('status').innerText = "数据已同步 ✅";
-                return dataMap;
-            } catch (error) {
-                console.error(error);
-                document.getElementById('status').innerText = "连接失败，请检查AppID";
+        // 辅助函数：初始化电影对象
+        function initMovie(name) {
+            if (!name) return;
+            if (!stats[name]) {
+                stats[name] = { score: 0, voters: new Set(), vetos: 0, name: name };
             }
         }
 
-        // 第一次运行时，在云端创建5部电影的档案
-        async function initCloudData() {
-            console.log("初始化云端数据...");
-            const MovieScores = AV.Object.extend('MovieScores');
-            const promises = movieNames.map(name => {
-                const movie = new MovieScores();
-                movie.set('name', name);
-                movie.set('votes', 0);
-                return movie.save();
-            });
-            await Promise.all(promises);
-        }
+        // 2. 遍历每一张选票进行计算
+        ballots.forEach(b => {
+            const m1 = b.get('rank1');
+            const m2 = b.get('rank2');
+            const m3 = b.get('rank3');
+            const v = b.get('veto');
+            const voter = b.get('voter');
 
-        // 投票动作
-        async function vote(movieName, objectId) {
-            document.getElementById('status').innerText = `正在提交给 ${movieName}...`;
+            // 计分 (3/2/1)
+            if(m1) { initMovie(m1); stats[m1].score += 3; stats[m1].voters.add(voter); }
+            if(m2) { initMovie(m2); stats[m2].score += 2; stats[m2].voters.add(voter); }
+            if(m3) { initMovie(m3); stats[m3].score += 1; stats[m3].voters.add(voter); }
             
-            // 创建一个指向该行数据的引用
-            const todo = AV.Object.createWithoutData('MovieScores', objectId);
-            // 原子操作：在服务端直接+1，防止多人冲突
-            todo.increment('votes', 1);
-            
-            try {
-                await todo.save(); // 保存到云端
-                await loadData(); // 重新拉取最新数据
-                alert(`投给了《${movieName}》！`);
-            } catch (error) {
-                alert("投票失败，请重试");
+            // 记 Veto
+            if(v) { 
+                // 注意：被Veto的电影可能没被提名，也要记录下来
+                initMovie(v); 
+                stats[v].vetos += 1; 
             }
-        }
+        });
 
-        // 更新图表画面
-        function updateChart(dataMap) {
-            // 按照我们需要顺序提取票数
-            const votes = movieNames.map(name => dataMap[name] ? dataMap[name].votes : 0);
-
-            const option = {
-                tooltip: {},
-                xAxis: { data: movieNames },
-                yAxis: { minInterval: 1 }, // 保证Y轴是整数
-                series: [{
-                    name: '票数',
-                    type: 'bar',
-                    data: votes,
-                    itemStyle: { color: '#5470c6' },
-                    label: { show: true, position: 'top' }
-                }]
-            };
-            chartInstance.setOption(option);
+        // 3. 转换为数组并排序
+        let results = Object.values(stats);
+        
+        // 排序逻辑：
+        // 1. 优先把没被淘汰的放前面 (Veto < 2)
+        // 2. 然后按分数高低排
+        // 3. 分数一样，按提名人数多排
+        results.sort((a, b) => {
+            const aDead = a.vetos >= 2;
+            const bDead = b.vetos >= 2;
+            if (aDead && !bDead) return 1; // a死了，b排前面
+            if (!aDead && bDead) return -1;
             
-            // 重新生成按钮（为了绑定最新的objectId）
-            const btnContainer = document.getElementById('btnContainer');
-            btnContainer.innerHTML = ''; // 清空旧按钮
-            movieNames.forEach(name => {
-                const btn = document.createElement('button');
-                btn.innerText = name;
-                // 找到对应的云端ID
-                const objId = dataMap[name].id;
-                btn.onclick = () => vote(name, objId);
-                btnContainer.appendChild(btn);
-            });
-        }
+            if (b.score !== a.score) return b.score - a.score; // 分数降序
+            return b.voters.size - a.voters.size; // 提名人数降序
+        });
 
-        // =========================================================
-        // 3. 启动程序
-        // =========================================================
-        loadData();
+        renderTable(results);
+        document.getElementById('status').innerText = `已收到 ${ballots.length} 人投票`;
+    }
 
-        // 【自动刷新】每隔5秒自动去云端看看有没有人投票
-        setInterval(loadData, 5000);
+    // 渲染表格
+    function renderTable(data) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
 
-    </script>
+        data.forEach((movie, index) => {
+            const isDead = movie.vetos >= 2; // 是否被淘汰
+            const isOverlap = movie.voters.size >= 2; // 是否多人提名
+            
+            let rowClass = '';
+            let nameDisplay = movie.name;
+            
+            // 样式处理
+            if (isDead) {
+                rowClass = 'veto-dead';
+                nameDisplay += ' (已淘汰)';
+            } else if (index === 0) {
+                rowClass = 'rank-1'; // 第一名高亮
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = rowClass;
+            
+            tr.innerHTML = `
+                <td>${isDead ? '-' : index + 1}</td>
+                <td style="text-align:left; padding-left:20px;">
+                    ${nameDisplay}
+                    ${isOverlap && !isDead ? '<span class="overlap-badge">共识</span>' : ''}
+                </td>
+                <td>${movie.score}</td>
+                <td>${movie.voters.size}人</td>
+                <td>${movie.vetos > 0 ? `<span class="veto-badge">${movie.vetos} veto</span>` : '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 启动时加载一次
+    loadResults();
+    // 每3秒自动刷新看结果
+    setInterval(loadResults, 3000);
+
+</script>
 </body>
 </html>
