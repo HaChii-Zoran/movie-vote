@@ -4,11 +4,6 @@
 
 这个项目旨在解决 5 人小组周末选电影时的“决策困难”问题。它不同于普通的投票器，而是采用了**“加权计分 + 一票否决 (Veto) + 共识优先”**的极客规则，确保选出的电影是大家“最不反感且意愿最高”的最大公约数。
 
-**[👉 点击这里查看在线演示](https://你的用户名.github.io/仓库名/)** *(请将上方链接修改为你部署后的 GitHub Pages 链接)*
-
-![项目截图](https://via.placeholder.com/800x400?text=Please+Upload+Your+Screenshot+Here)
-*(建议：部署成功后，截一张带数据的图，替换上面的图片链接)*
-
 ---
 
 ## ✨ 核心功能
@@ -75,8 +70,31 @@
 const APP_ID = '粘贴你的AppID';   
 const APP_KEY = '粘贴你的AppKey'; 
 const SERVER_URL = '[https://你的域名.api.lncldglobal.com](https://你的域名.api.lncldglobal.com)'; // 国际版在后台复制，国内版填绑定域名
+```
 
-### 第四步：上线
-1.  将代码 Push 到 GitHub 仓库。
-2.  在仓库Setting > Pages中，Source 选择 Deploy from a branch，分支选择 main (或 master)。
-3.  保存后等待 2 分钟，即可获得在线链接。
+### 第四步：上线 GitHub Pages
+1.  将修改后的代码 Commit 并 Push 到 GitHub 仓库。
+2.  进入仓库页面，点击顶部菜单的 **Settings**。
+3.  在左侧栏找到 **Pages**。
+4.  在 **Build and deployment** 下方：
+    * **Source**: 选择 `Deploy from a branch`
+    * **Branch**: 选择 `main` (或 master)，文件夹选 `/(root)`
+5.  点击 **Save**。等待约 1-2 分钟，顶部会出现在线访问链接。
+
+---
+
+## 🧹 管理员维护 (如何开启新一轮)
+
+由于系统设计为“只增不减”的流水账模式，每周投票结束后，管理员需要**手动清空数据**以便下周使用：
+
+1.  登录 LeanCloud 控制台。
+2.  进入 **数据存储 > 结构化数据 > Ballot**。
+3.  勾选所有数据行 (左上角全选)。
+4.  点击 **删除**。
+5.  网页端刷新即变为空状态。
+
+---
+
+## 📝 License
+
+MIT License.
