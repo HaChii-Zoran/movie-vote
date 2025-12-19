@@ -10,7 +10,7 @@
         .container { max-width: 800px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         h1, h2 { text-align: center; color: #2c3e50; }
         
-        /* 投票表单区域 */
+        /* 投票表单 */
         .vote-section { background: #eef2f7; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
         .input-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
@@ -20,18 +20,22 @@
         button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: 0.2s; }
         button:hover { background-color: #0056b3; }
         
-        /* 结果展示表格 */
+        /* 盲盒区域样式 */
+        .blind-box { text-align: center; padding: 40px 20px; background: #fff8e1; border-radius: 8px; border: 2px dashed #ffc107; margin-top: 20px; }
+        .vote-count { font-size: 48px; font-weight: bold; color: #d35400; margin: 10px 0; }
+        .reveal-btn { background-color: #27ae60; margin-top: 15px; width: auto; padding: 10px 40px; }
+        
+        /* 结果表格（默认隐藏） */
+        #resultArea { display: none; animation: fadeIn 0.5s; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { padding: 12px; text-align: center; border-bottom: 1px solid #eee; }
         th { background-color: #f8f9fa; color: #666; font-size: 14px; }
-        
-        /* 特殊状态样式 */
-        .rank-1 { color: #d35400; font-weight: bold; } /* 第一名颜色 */
-        .veto-dead { text-decoration: line-through; color: #999; background-color: #ffe6e6; } /* 被淘汰 */
-        .veto-badge { background: #ff4757; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+        .rank-1 { color: #d35400; font-weight: bold; background-color: #fffaf0; }
+        .veto-dead { text-decoration: line-through; color: #999; background-color: #ffe6e6; }
         .overlap-badge { background: #2ed573; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+        .veto-badge { background: #ff4757; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
 
-        .rules { font-size: 12px; color: #666; background: #fff8e1; padding: 10px; border-radius: 6px; margin-bottom: 20px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -39,12 +43,6 @@
 <div class="container">
     <h1>🎬 天国电影VOTE</h1>
     
-    <div class="rules">
-        <strong>计分规则：</strong>第1志愿=3分，第2志愿=2分，第3志愿=1分。<br>
-        <strong>淘汰规则：</strong>任意电影收到 ≥2 个 Veto 直接淘汰。<br>
-        <strong>获胜判定：</strong>优先看“多人提名”的高分电影；无重合则取 Top3 进二轮。
-    </div>
-
     <div class="vote-section">
         <h3>📝 填写选票</h3>
         <div class="input-group">
@@ -65,31 +63,38 @@
         </div>
         <div class="input-group">
             <label style="color:#d63031">🚫 反向保护 Veto (可选)</label>
-            <input type="text" id="movieVeto" class="veto-input" placeholder="如果有≥2人填此片，则直接淘汰">
+            <input type="text" id="movieVeto" class="veto-input" placeholder="有≥2人填此片则直接淘汰">
         </div>
-        <button onclick="submitBallot()">提交选票</button>
+        <button onclick="submitBallot()">提交选票 (提交后请保密)</button>
     </div>
 
     <hr>
 
-    <h2>📊 实时战况</h2>
-    <p id="status">正在加载...</p>
-    <table id="resultTable">
-        <thead>
-            <tr>
-                <th>排名</th>
-                <th>电影名</th>
-                <th>总分</th>
-                <th>提名人数</th>
-                <th>Veto数</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody">
-            </tbody>
-    </table>
-    
-    <div style="margin-top:20px; text-align:center;">
-        <small style="color:#999">请确保大家输入的电影名完全一致（推荐复制粘贴）</small>
+    <div id="blindState" class="blind-box">
+        <h3>🗳️ 投票进行中...</h3>
+        <div>当前已收到</div>
+        <div class="vote-count" id="countNum">0</div>
+        <div>张选票</div>
+        <br>
+        <p style="color:#666; font-size:14px;">结果已隐藏，等待全员投完</p>
+        <button class="reveal-btn" onclick="reveal()">👀 所有人投完后，点此揭晓</button>
+    </div>
+
+    <div id="resultArea">
+        <h2>📊 最终战况</h2>
+        <table id="resultTable">
+            <thead>
+                <tr>
+                    <th>排名</th>
+                    <th>电影名</th>
+                    <th>总分</th>
+                    <th>提名人数</th>
+                    <th>Veto数</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+        <button onclick="hideResults()" style="background:#999; margin-top:20px;">🙈 隐藏结果</button>
     </div>
 </div>
 
@@ -97,11 +102,13 @@
     // ================= 配置区域 =================
     const APP_ID = 'LUMZuF5Cr3LjaCLSeyoYnvnS-MdYXbMMI'; 
     const APP_KEY = 'rYU63S7qKIqPcjeHdXwfnSca';
-    const SERVER_URL = 'https://lumzuf5c.api.lncldglobal.com';
+    const SERVER_URL = 'https://lumzuf5c.api.lncldglobal.com'; 
 
     AV.init({ appId: APP_ID, appKey: APP_KEY, serverURL: SERVER_URL });
 
-    // ================= 逻辑代码 =================
+    // 全局变量存储数据
+    let globalResults = []; 
+    let isRevealed = false; // 标记是否已经揭晓
 
     // 提交选票
     async function submitBallot() {
@@ -117,7 +124,13 @@
         }
 
         const Ballot = AV.Object.extend('Ballot');
+        // 权限设置：允许所有人读写
+        const acl = new AV.ACL();
+        acl.setPublicReadAccess(true);
+        acl.setPublicWriteAccess(true);
+
         const ballot = new Ballot();
+        ballot.setACL(acl);
         ballot.set('voter', name);
         ballot.set('rank1', m1);
         ballot.set('rank2', m2);
@@ -126,26 +139,42 @@
 
         try {
             await ballot.save();
-            alert("提交成功！");
-            // 清空输入框防止重复提交
+            alert("提交成功！请在群里回复“已投”，但不要透露内容。");
             document.querySelectorAll('input').forEach(i => i.value = '');
-            loadResults(); // 刷新结果
+            loadResults(); 
         } catch (error) {
-            alert("提交失败，请重试：" + error.message);
+            alert("提交失败：" + error.message);
         }
     }
 
-    // 拉取数据并计算
+    // 点击“揭晓”按钮
+    function reveal() {
+        const confirmReveal = confirm("确定所有人都投完了吗？\n\n点击确定将向所有人展示结果。");
+        if(confirmReveal) {
+            document.getElementById('blindState').style.display = 'none';
+            document.getElementById('resultArea').style.display = 'block';
+            isRevealed = true;
+            renderTable(globalResults); // 渲染刚刚计算好的数据
+        }
+    }
+
+    // 重新隐藏（如果点错了）
+    function hideResults() {
+        document.getElementById('blindState').style.display = 'block';
+        document.getElementById('resultArea').style.display = 'none';
+        isRevealed = false;
+    }
+
+    // 后台加载数据
     async function loadResults() {
-        document.getElementById('status').innerText = "计算中...";
         const query = new AV.Query('Ballot');
-        // 获取所有人的投票
         const ballots = await query.find();
         
-        // 1. 原始数据统计字典
-        let stats = {}; 
+        // 更新大数字
+        document.getElementById('countNum').innerText = ballots.length;
 
-        // 辅助函数：初始化电影对象
+        // 计算逻辑 (和之前一样，只是算完先不画表格)
+        let stats = {}; 
         function initMovie(name) {
             if (!name) return;
             if (!stats[name]) {
@@ -153,7 +182,6 @@
             }
         }
 
-        // 2. 遍历每一张选票进行计算
         ballots.forEach(b => {
             const m1 = b.get('rank1');
             const m2 = b.get('rank2');
@@ -161,63 +189,48 @@
             const v = b.get('veto');
             const voter = b.get('voter');
 
-            // 计分 (3/2/1)
             if(m1) { initMovie(m1); stats[m1].score += 3; stats[m1].voters.add(voter); }
             if(m2) { initMovie(m2); stats[m2].score += 2; stats[m2].voters.add(voter); }
             if(m3) { initMovie(m3); stats[m3].score += 1; stats[m3].voters.add(voter); }
-            
-            // 记 Veto
-            if(v) { 
-                // 注意：被Veto的电影可能没被提名，也要记录下来
-                initMovie(v); 
-                stats[v].vetos += 1; 
-            }
+            if(v) { initMovie(v); stats[v].vetos += 1; }
         });
 
-        // 3. 转换为数组并排序
+        // 排序
         let results = Object.values(stats);
-        
-        // 排序逻辑：
-        // 1. 优先把没被淘汰的放前面 (Veto < 2)
-        // 2. 然后按分数高低排
-        // 3. 分数一样，按提名人数多排
         results.sort((a, b) => {
             const aDead = a.vetos >= 2;
             const bDead = b.vetos >= 2;
-            if (aDead && !bDead) return 1; // a死了，b排前面
+            if (aDead && !bDead) return 1;
             if (!aDead && bDead) return -1;
-            
-            if (b.score !== a.score) return b.score - a.score; // 分数降序
-            return b.voters.size - a.voters.size; // 提名人数降序
+            if (b.score !== a.score) return b.score - a.score;
+            return b.voters.size - a.voters.size;
         });
 
-        renderTable(results);
-        document.getElementById('status').innerText = `已收到 ${ballots.length} 人投票`;
+        // 保存到全局变量
+        globalResults = results;
+
+        // 如果当前已经是揭晓状态，实时刷新表格（处理后来的人补票情况）
+        if(isRevealed) {
+            renderTable(results);
+        }
     }
 
-    // 渲染表格
     function renderTable(data) {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
-
         data.forEach((movie, index) => {
-            const isDead = movie.vetos >= 2; // 是否被淘汰
-            const isOverlap = movie.voters.size >= 2; // 是否多人提名
-            
+            const isDead = movie.vetos >= 2;
+            const isOverlap = movie.voters.size >= 2;
             let rowClass = '';
             let nameDisplay = movie.name;
-            
-            // 样式处理
             if (isDead) {
                 rowClass = 'veto-dead';
                 nameDisplay += ' (已淘汰)';
             } else if (index === 0) {
-                rowClass = 'rank-1'; // 第一名高亮
+                rowClass = 'rank-1';
             }
-
             const tr = document.createElement('tr');
             tr.className = rowClass;
-            
             tr.innerHTML = `
                 <td>${isDead ? '-' : index + 1}</td>
                 <td style="text-align:left; padding-left:20px;">
@@ -232,11 +245,9 @@
         });
     }
 
-    // 启动时加载一次
+    // 启动
     loadResults();
-    // 每3秒自动刷新看结果
     setInterval(loadResults, 3000);
-
 </script>
 </body>
 </html>
